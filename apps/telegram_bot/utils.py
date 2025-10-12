@@ -1,5 +1,10 @@
 # Load the PyMuPDF library
 import fitz
+# Load the PyMuPDF4LLM library
+import pymupdf4llm
+# Load Pathlib library
+import pathlib as path
+
 doc = fitz.open('storage/originals/RBC_Scholarship.pdf')
 #For every page in the document
 for page in doc:
@@ -101,21 +106,31 @@ for page in doc:
         # Apply redaction
         page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_REMOVE, graphics=fitz.PDF_REDACT_IMAGE_REMOVE,text=fitz.PDF_REDACT_TEXT_REMOVE)
 
-        # Save to new pdf
-        doc.save('storage/cleaned/redacted.pdf', garbage=4, deflate=True)
-
         # Sanity check
         print("Successfully redacted")
 
-        # Close PDF
-        doc.close()
+# Save to new pdf
+doc.save('storage/cleaned/redacted_v2.pdf', garbage=4, deflate=True)
 
+# Close PDF
+doc.close()
+          
+            
+md_text = pymupdf4llm.to_markdown('storage/cleaned/redacted_v2.pdf')
+          
+md_path = path.Path('storage/cleaned/redacted.md')
 
+   
+
+bytes_written = md_path.write_text(md_text, encoding="utf-8", newline="\n")
+
+print("Markdown saved to redacted.md")
+
+       
+       
 
         
         
-
-
 
 
 

@@ -12,6 +12,10 @@ import os
 import re
 # Load counter from collections
 from collections import Counter
+# Load text splitting library RecursiveTextSplitter from Langchain
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+#Load hashlib to create doc id
+import hashlib
 
 doc = fitz.open('storage/originals/RBC_Scholarship.pdf')
 #For every page in the document
@@ -281,4 +285,32 @@ if total_lines != bucket_sum:
 print(f"Sub text pattern matches: {sub_hits}")
 print(f"Bold text pattern matches: {bold_hits}")
 print(f"Non-matching lines: {total_lines - (sub_hits + bold_hits)}")
+
+
+
+def text_splitter():
+        # Creath Path object to show path to file
+    chunk_path = path.Path('storage/cleaned/copy_redacted.md')
+    with open(chunk_path, "r", encoding = "utf-8" ) as f:
+        text = f.read()
+    splitter = RecursiveCharacterTextSplitter(
+# The default list of split characters is [\n\n, \n, " ", ""]
+# Tries to split on them in order until the chunks are small enough
+# Keep paragraphs, sentences, words together as long as possible
+            separators = ["\n\n", "\n", " ", ""],
+            chunk_size = 1200,
+            chunk_overlap = 240,
+            length_function = len,
+
+        )
+    chunks = splitter.split_text(text)
+    print (len(chunks))
+    for i, chunk in enumerate(chunks):
+        print(f"Chunk: {i + 1}")
+        print(chunk)
+        print ("\n" + "=" * 80 + "\n")
+#Call the function to execute the code
+text_splitter()
+
+
 

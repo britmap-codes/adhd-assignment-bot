@@ -14,10 +14,32 @@ import re
 from collections import Counter
 # Load text splitting library RecursiveTextSplitter from Langchain
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-#Load hashlib to create doc id
+#Load hashlib to generate hash SHA256
 import hashlib
+# Testing Load uuid to generate doc_id
+#import uuid
+import json
+
+def get_filename():
+    filename_path = path.Path("storage/originals/RBC_Scholarship.pdf")
+    return filename_path.stem
+filename = get_filename()
+print(filename)
+
+def get_doc_id() -> str:
+    pdf_path = path.Path("storage/originals/RBC_Scholarship.pdf")
+
+    with pdf_path.open("rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()[:12]
+
+doc_id = get_doc_id()
+
+print("doc_id:", doc_id)
 
 doc = fitz.open('storage/originals/RBC_Scholarship.pdf')
+
+
+
 #For every page in the document
 for page in doc:
     text = page.get_text() #  Get all the text from the pdf

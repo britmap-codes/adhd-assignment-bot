@@ -143,29 +143,31 @@ for page in doc:
         # Sanity check
         print("Successfully redacted")
 
+
+root_folder = path.Path("c:\\adhd projects\\adhd assignment bot")
 # Save to new pdf
-doc.save('storage/cleaned/redacted.pdf', garbage=4, deflate=True)
+doc.save(root_folder /"storage" / "cleaned" / f'{doc_id}.pdf', garbage=4, deflate=True)
 
 # Close PDF
 doc.close()
 
 
-md_text = pymupdf4llm.to_markdown('storage/cleaned/redacted.pdf')
+md_text = pymupdf4llm.to_markdown(root_folder /"storage" / "cleaned" / f'{doc_id}.pdf')
 
-md_path = path.Path('storage/cleaned/redacted.md')
+md_path = path.Path(root_folder /"storage" / "cleaned" / f'{doc_id}.md')
 
 
 
 bytes_written = md_path.write_text(md_text, encoding="utf-8", newline="\n")
 
-print("Markdown saved to redacted.md")
+print(f"Markdown saved to {doc_id}.md")
 
 
 
 # Copy and rename redacted.md for chunking
-source_file = "storage/cleaned/redacted.md"
-destination_folder = "storage/cleaned"
-new_file_name = "copy_redacted.md"
+source_file = root_folder /"storage" / "cleaned"/ f'{doc_id}.md'
+destination_folder = root_folder /"storage" / "cleaned"
+new_file_name = f"copy_{doc_id}.md"
 new_path = os.path.join(destination_folder, new_file_name)
 
 
@@ -173,10 +175,10 @@ new_path = os.path.join(destination_folder, new_file_name)
 # Use the shutil.copy2() method to copy the file to the destination directory
 shutil.copy2(source_file, new_path)
 
-print("Successfully Created File and Renamed Redacted.md")
+print(f"Successfully Created File and Renamed {doc_id}.md")
 
 # Create a Path object for a file
-file_path = path.Path('storage/cleaned/copy_redacted.md')
+file_path = path.Path(root_folder /"storage" / "cleaned"/ f'copy_{doc_id}.md')
 
 # Read the contents of the file
 contents = file_path.read_text(encoding="utf-8")
@@ -312,7 +314,7 @@ print(f"Non-matching lines: {total_lines - (sub_hits + bold_hits)}")
 
 def text_splitter():
         # Creath Path object to show path to file
-    chunk_path = path.Path('storage/cleaned/copy_redacted.md')
+    chunk_path = path.Path(root_folder /"storage" / "cleaned" / f'copy_{doc_id}.md')
     with open(chunk_path, "r", encoding = "utf-8" ) as f:
         text = f.read()
     splitter = RecursiveCharacterTextSplitter(

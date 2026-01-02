@@ -331,8 +331,9 @@ def text_splitter():
         print(f"Chunk: {i + 1}")
         print(chunk)
         print ("\n" + "=" * 80 + "\n")
-#Call the function to execute the code
-text_splitter()
+    return chunks
+chunks = text_splitter()
+
 
 
 

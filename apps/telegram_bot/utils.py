@@ -337,5 +337,31 @@ def text_splitter():
 chunks = text_splitter()
 
 
+def get_chunk_record():
 
+    chunk_records = []
 
+    for i, chunk in enumerate(chunks):
+
+            chunk_record = {
+            "doc_id": doc_id,
+            "chunk_id": (f"{doc_id}-{i + 1:04}"),
+            "text": chunk,
+            "filename": filename
+        }
+            chunk_records.append(chunk_record)
+    return chunk_records
+chunk_records = get_chunk_record()
+print (chunk_records)
+
+#next convert to json then save as jsonl
+
+def get_jsonl():
+    json_path = path.Path(root_folder /"storage" / "chunks" / f'{doc_id}.jsonl')
+    # Create (write) a json file using json_path, encode to utf-8 to avoid errors
+    with open (json_path, "w", encoding="utf-8") as json_file:
+        for i, chunk_record in enumerate(chunk_records):
+        # Convert to JSON string
+            json_string = json.dumps(chunk_record)
+            json_file.write(json_string + '\n')
+get_jsonl()

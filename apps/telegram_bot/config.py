@@ -14,17 +14,58 @@
 #----------------------------------------------------------
 # Switched to pydantic settings to include type, validation, and defaults to prevent errors
 
-
+from __future__ import annotations
+from typing import Iterable
 import os
 from pathlib import Path
 
-ENV_PATH = os.path.realpath(
-    os.path.join(os.path.dirname(__file__), '..', '..', 'infra', '.env') 
-)
+# ENV_PATH = os.path.realpath(
+#     os.path.join(os.path.dirname(__file__), '..', '..', 'infra', '.env') 
+# )
  
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import SecretStr
+
+
+
+
+def get_project_root(start: Path,
+    root_indicators: Iterable[str] = (".git", "pyproject.toml", "requirements.txt"),):
+    ''' Walks upwards from path (start) until it finds the project root folder containing .git,
+      pyproject.toml, requirements.txt, "docker-compose.yml", etc.
+    '''
+    current_path = start.resolve()
+    indicators = set(root_indicators)
+    while True:
+
+        print(f"Current directory: {current_path}")
+        if any((current_path / indicator).exists() for indicator in indicators):
+            return current_path
+        if current_path == current_path.parent:
+            raise RuntimeError("Project root not found. No root indicators present.")
+        current_path = current_path.parent
+
+# 1) Project root (no hard-coded C:\ paths)
+ROOT_DIR: Path = get_project_root(Path(__file__).resolve().parent)
+
+# 2) Storage root (configurable)
+# Allow override via env var, else default to <repo>/storage
+STORAGE_DIR: Path = Path(os.getenv("STORAGE_DIR", str(ROOT_DIR / "storage"))).expanduser().resolve()
+
+# 3) Standard subfolders
+ORIGINALS_DIR: Path = STORAGE_DIR / "originals"
+CLEANED_DIR: Path = STORAGE_DIR / "cleaned"
+CHUNKS_DIR: Path = STORAGE_DIR / "chunks"
+EXPORTS_DIR: Path = STORAGE_DIR / "exports"
+LOGS_DIR: Path = ROOT_DIR / "logs"
+
+# Create folders automatically (fresh clone safe)
+for p in (STORAGE_DIR, ORIGINALS_DIR, CLEANED_DIR, CHUNKS_DIR, EXPORTS_DIR, LOGS_DIR):
+    p.mkdir(parents=True, exist_ok=True)
+
+# .env path derived from project root (robust)
+ENV_PATH: Path = (ROOT_DIR / "infra" / ".env").resolve()
 
 
 
@@ -48,8 +89,16 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-print(settings)
+# print(settings)
 
 # sanity check
-print("Using .env:", ENV_PATH)
-print("Exists?    ", os.path.exists(ENV_PATH))
+# print("Using .env:", ENV_PATH)
+# print("Exists?    ", os.path.exists(ENV_PATH))
+
+# Sanity Check
+# Optional sanity checks (safe-ish). Enable by setting DEBUG_CONFIG=1
+if os.getenv("DEBUG_CONFIG", "0") == "1":
+    print("ROOT_DIR:    ", ROOT_DIR)
+    print("STORAGE_DIR: ", STORAGE_DIR)
+    print("ENV_PATH:    ", ENV_PATH)
+    print("ENV exists?: ", ENV_PATH.exists())

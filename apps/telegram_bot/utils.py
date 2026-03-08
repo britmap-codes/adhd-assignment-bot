@@ -3,7 +3,7 @@ import fitz
 # Load the PyMuPDF4LLM library
 import pymupdf4llm
 # Load Pathlib library
-import pathlib as path
+from pathlib import Path
 # Load Shutil library
 import shutil
 # Load os library
@@ -20,80 +20,27 @@ import hashlib
 #import uuid
 import json
 
-def get_filename():
-    filename_path = path.Path("storage/originals/RBC_Scholarship.pdf")
-    return filename_path.stem
-filename = get_filename()
-print(filename)
 
-def get_doc_id() -> str:
-    pdf_path = path.Path("storage/originals/RBC_Scholarship.pdf")
+def get_filename(pdf_path: Path) -> str:
+    return pdf_path.stem
 
+
+def get_doc_id(pdf_path: Path) -> str:
     with pdf_path.open("rb") as f:
         return hashlib.sha256(f.read()).hexdigest()[:12]
 
-doc_id = get_doc_id()
 
-print("doc_id:", doc_id)
+def prepare_pdf(pdf_path: Path, output_path: Path, profile: str):
 
-doc = fitz.open('storage/originals/RBC_Scholarship.pdf')
-
-
-
-#For every page in the document
-for page in doc:
-    text = page.get_text() #  Get all the text from the pdf
-    print(text) # Print the text
+    doc = fitz.open(pdf_path)
+    if profile == "rbc":
+        redact_footer_header(doc)
+    doc.save(output_path, garbage=4, deflate=True)
+    doc.close()
 
 
-# Total pages of pdf, covers creating the footers that match the same pattern for all 6 pages (Page 1 of 6, etc)
-total_pages = 6
 
-# For each number, starting at 1 and counting up by one until you reach the total number of pages (including page 6)
-# Create the exact text of the footer for each page number, like "page 1 of 6",
-footer_phrases = [f"page {i} of {total_pages}" for i in range(1, total_pages + 1)]
-
-# Specify the texts to search for
-search_words = ("RBC Future Launch Scholarship", "Universities Canada", "Foundation", "Scholarship Partners Canada", "2025 Program Guidelines") + tuple(footer_phrases)
-
-# Save search_words into a blank dictionary called results
-results = {}
-
-# Iterate through each page in the PDF
-for page in doc:
-
-    words = page.get_text("words")
-    # Use the `search_for` method to find instances of the search text on the page
-    # text_instances = page.search_for(search_words)
-    for w in words:
-    # w is like: [x0, y0, x1, y1, "word_text", block_no, line_no, word_no]
-    # bounding box coordinates
-        x0, y0, x1, y1 = w[0], w[1], w[2], w[3]
-    # the actual word
-        word_text = w[4]
-        block_no = w[5]
-        line_no = w[6]
-        word_no = w[7]
-        print(f"Word '{word_text}' found at coordinates: ({x0}, {y0}), ({x1}, {y1})")
-        print(f"Located in block {block_no}, line {line_no}, word number {word_no}\n")
-
-    for sword in search_words:
-
-        if sword in words:
-
-            pages = results.get(sword, set())
-
-            pages.add(page.number)
-
-            results[sword] = pages
-
-    for word in results:
-
-        result = list(map(str, results[word]))
-
-        page_list = ", ".join(result)
-
-        print("Word '%s' occurs on pages %s." % (word, page_list))
+def redact_footer_header(doc):
 
     for page in doc:
         # Get the page height from the pdf
@@ -101,10 +48,6 @@ for page in doc:
         x0 = page.rect.x0  # Get the left edge of pdf
         x1 = page.rect.x1 # Get the right edge of pdf
 
-        # Sanity check
-        print(f"Page height in points: {H}")
-        print(f"Left Edge in points: {x0}")
-        print(f"Right Edge in points: {x1}")
 
         # Calculate the header and footer band edges
         hdr_y0 = 0.04 * H   # Bottom edge of header band
@@ -112,13 +55,8 @@ for page in doc:
         ftr_y0 = 0.93 * H   # Bottom edge of footer band
         ftr_y1 = 0.97 * H   # Top edge of footer band
 
-        #Sanity check
-        print(f"Header Bottom Edge in points: {hdr_y0}")
-        print(f"Header Top Edge in points: {hdr_y1}")
-        print(f"Footer Bottom Edge in points: {ftr_y0}")
-        print(f"Footer Bottom Edge in points: {ftr_y1}")
 
-        # Add 2pt padding to the rectangle to ensure everything is contained
+         # Add 2pt padding to the rectangle to ensure everything is contained
         P = 2
         hdr_y0_padded = (hdr_y0 - P)
         hdr_y1_padded = (hdr_y1 + P)
@@ -129,193 +67,27 @@ for page in doc:
         header_rect = (x0, hdr_y0_padded , x1, hdr_y1_padded)
         footer_rect = (x0, ftr_y0_padded, x1, ftr_y1_padded)
 
-        # Sanity check
-        print(f"Header Rectangle in points: {header_rect}")
-        print(f"Footer Rectangle in points: {footer_rect}")
 
-        # Add redaction annotation to header and footer rectangles
+         # Add redaction annotation to header and footer rectangles
         page.add_redact_annot(header_rect)
         page.add_redact_annot(footer_rect)
 
         # Apply redaction
         page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_REMOVE, graphics=fitz.PDF_REDACT_IMAGE_REMOVE,text=fitz.PDF_REDACT_TEXT_REMOVE)
 
-        # Sanity check
-        print("Successfully redacted")
 
+def pdf_to_markdown(output_path: Path, md_path: Path)-> Path:
 
-root_folder = path.Path("c:\\adhd projects\\adhd assignment bot")
-# Save to new pdf
-doc.save(root_folder /"storage" / "cleaned" / f'{doc_id}.pdf', garbage=4, deflate=True)
+    md_text = pymupdf4llm.to_markdown(output_path)
 
-# Close PDF
-doc.close()
+    md_path.write_text(md_text, encoding="utf-8", newline="\n")
 
+    return md_path
 
-md_text = pymupdf4llm.to_markdown(root_folder /"storage" / "cleaned" / f'{doc_id}.pdf')
-
-md_path = path.Path(root_folder /"storage" / "cleaned" / f'{doc_id}.md')
-
-
-
-bytes_written = md_path.write_text(md_text, encoding="utf-8", newline="\n")
-
-print(f"Markdown saved to {doc_id}.md")
-
-
-
-# Copy and rename redacted.md for chunking
-source_file = root_folder /"storage" / "cleaned"/ f'{doc_id}.md'
-destination_folder = root_folder /"storage" / "cleaned"
-new_file_name = f"copy_{doc_id}.md"
-new_path = os.path.join(destination_folder, new_file_name)
-
-
-
-# Use the shutil.copy2() method to copy the file to the destination directory
-shutil.copy2(source_file, new_path)
-
-print(f"Successfully Created File and Renamed {doc_id}.md")
-
-# Create a Path object for a file
-file_path = path.Path(root_folder /"storage" / "cleaned"/ f'copy_{doc_id}.md')
-
-# Read the contents of the file
-contents = file_path.read_text(encoding="utf-8")
-
-# Sanity check if file is read, prints number of characters in file
-print(len(contents))
-
-# Split string into a list of lines and preserve format
-lines = contents.splitlines(keepends=False)
-
-match_lines = lines.copy()
-
-sub_pattern = r'(\*\*)(.*?\bnumber\b)(.*?\band\b)(.*?\bvalue\b)(.*?\bof\b)(.*?\bscholarships\b)(\*\*)'
-pattern = r'(\*\*)(.*?)(\*\*)'
-
-
-# ^\s*\*\*([^*]+?)\*\*\s*:\s+(.+)$
-sub_text = re.compile(sub_pattern, re.IGNORECASE)
-bold_text = re.compile(pattern)
-
-
-# Create empty list called matches to store results that match the pattern
-matches = []
-
-# Create separate counters for each category of results if the string is empty, has whitespaces, etc
-
-empty = 0
-
-whitespace_only = 0
-
-whitespace_nbsp = 0
-
-content_nbsp = 0
-
-other_content = 0
-
-# Count how many lines match the subtext and bold text pattern
-
-bold_hits = 0
-
-sub_hits = 0
-
-
-for i, line in enumerate(lines):
-
-    mline = line.replace('\u00A0', ' ')
-
-    # Precompute booleans first, to make code more readable
-    is_empty = len(line) == 0
-    is_ws_only = line.strip() == ""
-    has_nbsp = "\u00A0" in line
-
-
-    sub_match = sub_text.search(mline)
-    match = bold_text.search(mline)
-
-    if sub_match:
-
-        record = {
-            "line_no": i + 1,
-            "pattern_type": "bold_label_phrase",
-            "raw_line": line,
-            "match0": sub_match.group(0),
-            "groups": sub_match.groups(),
-            "span": sub_match.span()
-        }
-        sub_hits += 1
-        matches.append(record)
-        print(f"String matches the regex pattern: {record}")
-
-
-
-    elif match:
-        record = {
-            "line_no": i + 1,
-            "pattern_type": "any_bold_span",
-            "raw_line": line,
-            "match0": match.group(0),
-            "groups": match.groups(),
-            "span": match.span()
-        }
-        bold_hits += 1
-        matches.append(record)
-        print(f"String matches the regex pattern: {record}")
-
-
-    else:
-        print("String does not match regex pattern")
-
-    if is_empty:
-        empty += 1
-
-
-    elif is_ws_only and has_nbsp:
-        whitespace_nbsp += 1
-        print("Line contains whitespace and NBSP:", repr(line))
-
-    elif is_ws_only:
-        whitespace_only += 1
-        print("Lines contains whitespace only")
-
-
-
-    elif has_nbsp:
-        content_nbsp += 1
-        print("Line contains NBSP:", repr(line))
-
-    else:
-        other_content += 1
-        print("Line contains other content")
-
-
-
-counts = Counter({'empty': empty, 'whitespace_nbsp': whitespace_nbsp, 'whitespace_only': whitespace_only, 'content_nbsp': content_nbsp, 'other_content': other_content})
-
-print(counts)
-
-# Sanity check
-total_lines = len(lines)
-bucket_sum = empty + whitespace_only + whitespace_nbsp + content_nbsp + other_content
-
-print(f"Total lines: {total_lines}")
-print(f"Sum of buckets: {bucket_sum}")
-
-if total_lines != bucket_sum:
-    print("Warning! Buckets don't add up correctly.")
-
-print(f"Sub text pattern matches: {sub_hits}")
-print(f"Bold text pattern matches: {bold_hits}")
-print(f"Non-matching lines: {total_lines - (sub_hits + bold_hits)}")
-
-
-
-def text_splitter():
-        # Creath Path object to show path to file
-    chunk_path = path.Path(root_folder /"storage" / "cleaned" / f'copy_{doc_id}.md')
-    with open(chunk_path, "r", encoding = "utf-8" ) as f:
+def text_splitter(md_path: Path) -> list[str]:
+    # Creath Path object to show path to file
+   
+    with open(md_path, "r", encoding = "utf-8" ) as f:
         text = f.read()
     splitter = RecursiveCharacterTextSplitter(
 # The default list of split characters is [\n\n, \n, " ", ""]
@@ -328,16 +100,11 @@ def text_splitter():
 
         )
     chunks = splitter.split_text(text)
-    print (len(chunks))
-    for i, chunk in enumerate(chunks):
-        print(f"Chunk: {i + 1}")
-        print(chunk)
-        print ("\n" + "=" * 80 + "\n")
     return chunks
-chunks = text_splitter()
 
 
-def get_chunk_record():
+
+def get_chunk_record(chunks: list[str], doc_id: str, filename: str) -> list[dict]:
 
     chunk_records = []
 
@@ -351,17 +118,15 @@ def get_chunk_record():
         }
             chunk_records.append(chunk_record)
     return chunk_records
-chunk_records = get_chunk_record()
-print (chunk_records)
 
 #next convert to json then save as jsonl
 
-def get_jsonl():
-    json_path = path.Path(root_folder /"storage" / "chunks" / f'{doc_id}.jsonl')
+def write_jsonl(chunk_records: list[dict], json_path: Path) -> Path:
     # Create (write) a json file using json_path, encode to utf-8 to avoid errors
     with open (json_path, "w", encoding="utf-8") as json_file:
         for i, chunk_record in enumerate(chunk_records):
         # Convert to JSON string
             json_string = json.dumps(chunk_record)
             json_file.write(json_string + '\n')
-get_jsonl()
+        return json_path
+

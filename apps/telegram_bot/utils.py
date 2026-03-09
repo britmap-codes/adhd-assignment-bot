@@ -30,12 +30,12 @@ def get_doc_id(pdf_path: Path) -> str:
         return hashlib.sha256(f.read()).hexdigest()[:12]
 
 
-def prepare_pdf(pdf_path: Path, output_path: Path, profile: str):
+def prepare_pdf(pdf_path: Path, cleaned_pdf_path: Path, profile: str):
 
     doc = fitz.open(pdf_path)
     if profile == "rbc":
         redact_footer_header(doc)
-    doc.save(output_path, garbage=4, deflate=True)
+    doc.save(cleaned_pdf_path, garbage=4, deflate=True)
     doc.close()
 
 
@@ -76,9 +76,9 @@ def redact_footer_header(doc):
         page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_REMOVE, graphics=fitz.PDF_REDACT_IMAGE_REMOVE,text=fitz.PDF_REDACT_TEXT_REMOVE)
 
 
-def pdf_to_markdown(output_path: Path, md_path: Path)-> Path:
+def pdf_to_markdown(cleaned_pdf_path: Path, md_path: Path)-> Path:
 
-    md_text = pymupdf4llm.to_markdown(output_path)
+    md_text = pymupdf4llm.to_markdown(cleaned_pdf_path)
 
     md_path.write_text(md_text, encoding="utf-8", newline="\n")
 

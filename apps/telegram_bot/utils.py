@@ -130,3 +130,34 @@ def write_jsonl(chunk_records: list[dict], json_path: Path) -> Path:
             json_file.write(json_string + '\n')
         return json_path
 
+def generate_steps():
+    #Create a dictionary of assignment types
+    step_templates = {
+        "essay": [
+        "1.Read the instructions for: {desc}",
+        "2.Identify the main argument you want to make",
+        "3.Create a quick outline",
+        "4.Write the first paragraph"
+        ],
+        "coding":[
+        "1.Understand what the problem '{desc}' is asking",
+        "2.Identify the inputs and outputs",
+        "3.Write a small pseudocode plan",
+        "4.Start implementing the first function"
+        ],
+        "reading":[
+        "1.Skim the material to understand the structure",
+        "2.Focus on the sections related to '{desc}'",
+        "3.Take brief notes on key ideas",
+        "4.Summarize the main points"
+        ],
+        "other": [
+        "1.Read the instructions for: {desc}",
+        "2.Identify what the assignment is asking you to produce",
+        "3.Break the task into smaller parts",
+        "4.Start working on the first small part"
+        ]
+
+    }
+
+    

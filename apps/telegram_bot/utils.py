@@ -130,7 +130,8 @@ def write_jsonl(chunk_records: list[dict], json_path: Path) -> Path:
             json_file.write(json_string + '\n')
         return json_path
 
-def generate_steps():
+def generate_steps(assignment_type, description):
+    assignment_type = assignment_type.lower().strip()
     #Create a dictionary of assignment types
     step_templates = {
         "essay": [
@@ -159,5 +160,9 @@ def generate_steps():
         ]
 
     }
-
-    
+    steps = []
+    template = step_templates.get(assignment_type, step_templates["other"])
+    for step in template:
+        personalized_step = step.replace("{desc}", description)
+        steps.append(personalized_step)
+    return steps
